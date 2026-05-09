@@ -1,0 +1,13 @@
+{
+  "title": "High-Performance API Gateway",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {"type":"timeseries","title":"Requests/sec","gridPos":{"x":0,"y":0,"w":12,"h":8},"targets":[{"expr":"sum(rate(gateway_http_requests_total[1m]))"}]},
+    {"type":"timeseries","title":"p95 latency","gridPos":{"x":12,"y":0,"w":12,"h":8},"targets":[{"expr":"histogram_quantile(0.95, sum(rate(gateway_http_request_duration_seconds_bucket[5m])) by (le))"}]},
+    {"type":"stat","title":"Cache Hits","gridPos":{"x":0,"y":8,"w":8,"h":6},"targets":[{"expr":"sum(rate(gateway_cache_hits_total[5m]))"}]},
+    {"type":"stat","title":"Rate Limit Violations","gridPos":{"x":8,"y":8,"w":8,"h":6},"targets":[{"expr":"sum(rate(gateway_rate_limit_violations_total[5m]))"}]},
+    {"type":"stat","title":"Proxy Errors","gridPos":{"x":16,"y":8,"w":8,"h":6},"targets":[{"expr":"sum(rate(gateway_proxy_errors_total[5m]))"}]}
+  ]
+}

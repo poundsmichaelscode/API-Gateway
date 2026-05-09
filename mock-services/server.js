@@ -1,0 +1,11 @@
+const express = require('express');
+const app = express();
+const service = process.env.SERVICE_NAME || 'mock';
+const port = Number(process.env.PORT || 5000);
+app.use(express.json());
+app.get('/health', (_req, res) => res.json({ service, status: 'ok' }));
+app.get('/', (req, res) => res.json({ service, route: '/', query: req.query, user: req.header('x-user-id') || null }));
+app.get('/profile', (req, res) => res.json({ service, profile: { id: req.header('x-user-id') || 'anonymous', role: req.header('x-user-role') || 'guest' } }));
+app.post('/charge', (req, res) => res.status(201).json({ service, payment: 'created', body: req.body }));
+app.get('/summary', (_req, res) => res.json({ service, rps: 120, errorRate: 0.01 }));
+app.listen(port, () => console.log(`${service} listening on ${port}`));

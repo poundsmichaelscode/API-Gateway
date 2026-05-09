@@ -1,0 +1,150 @@
+services:
+  api-gateway:
+    build: .
+    env_file: .env
+    environment:
+      # Docker containers must talk to other containers using service names
+      DATABASE_URL: postgresql://gateway:gateway_password@postgres:5432/gateway_analytics
+      REDIS_URL: redis://redis:6379
+
+      USERS_SERVICE_URL: http://mock-users:5001
+      PAYMENTS_SERVICE_URL: http://mock-payments:5002
+      ANALYTICS_SERVICE_URL: http://mock-analytics:5003
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      mock-users:
+        condition: service_started
+      mock-payments:
+        condition: service_started
+      mock-analytics:
+        condition: service_started
+    restart: unless-stopped
+    expose:
+      - "4000"
+    ports:
+      - "4000:4000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gateway
+      POSTGRES_PASSWORD: gateway_password
+      POSTGRES_DB: gateway_analytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway -d gateway_analytics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  mock-users:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./mock-services:/app
+    command: sh -c "npm install --silent && npm start"
+    environment:
+      SERVICE_NAME: users
+      PORT: 5001
+    expose:
+      - "5001"
+    restart: unless-stopped
+
+  mock-payments:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./mock-services:/app
+    command: sh -c "npm install --silent && npm start"
+    environment:
+      SERVICE_NAME: payments
+      PORT: 5002
+    expose:
+      - "5002"
+    restart: unless-stopped
+
+  mock-analytics:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./mock-services:/app
+    command: sh -c "npm install --silent && npm start"
+    environment:
+      SERVICE_NAME: analytics
+      PORT: 5003
+    expose:
+      - "5003"
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  postgres_data:
+  grafana_data:
