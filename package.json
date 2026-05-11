@@ -14,7 +14,15 @@
     "load:test": "k6 run k6/gateway-smoke.js",
     "db:migrate": "tsx scripts/migrate.ts"
   },
-  "keywords": ["api-gateway", "typescript", "redis", "prometheus", "nginx", "postgresql", "microservices"],
+  "keywords": [
+    "api-gateway",
+    "typescript",
+    "redis",
+    "prometheus",
+    "nginx",
+    "postgresql",
+    "microservices"
+  ],
   "author": "Olayenikan Michael",
   "license": "MIT",
   "dependencies": {
@@ -31,7 +39,6 @@
     "cors": "latest",
     "dotenv": "latest",
     "express": "latest",
-    "express-mongo-sanitize": "latest",
     "express-rate-limit": "latest",
     "helmet": "latest",
     "http-proxy-middleware": "latest",
